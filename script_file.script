@@ -1,0 +1,251 @@
+>D 170
+;Version v030224
+;don´t change lines below!
+mpptdebug=0
+debug=0
+res=0
+rstr=""
+data1=""
+data2=""
+rpvv=0
+rpva=0
+rpvp=0
+racv=0
+racc=0
+racp=0
+;casetemp
+rtemp=0
+rpa=0
+rene=0
+rdene=0
+rps=0
+rpst=""
+rpla=0
+remi=0
+rtim=0
+;derating
+rtempset=0
+p:pa=0
+pas=""
+p:ps=1
+pss=""
+p:tem=0
+tems=""
+sb1=""
+t1pa=0
+t2pa=0
+t1pas=""
+t2pas=""
+t:timer1=-1
+mpptwait=2
+p:mppt=0
+p:enmppt=0
+
+>B
+; open serial port
+so(3 1 115200 8N1 250)
+
+>F
+;check for serial data
+res=sa()
+if res>100
+then
+;read until /r
+rstr=sr(10)
+sb1=sb(rstr 20 1)
+if debug==1
+then print Debug: SB: %sb1% 
+endif
+;trenne zwischen lang und kurzem string
+switch sb1
+case "P"
+if debug==1
+then print Debug: long string detected
+endif
+data1=rstr
+case ","
+if debug=1
+then print Debug: short string detected
+endif
+data2=rstr
+ends
+sb1=""
+if debug==1
+then print Debug: %rstr%
+endif
+endif
+
+>S
+=#datalong
+=#datashort
+=#mppt
+if upd[pa]>0
+then
+print Info: PowerChange detected
+pas="+ILOPDATA=ICA,Power_adjustment,"+s(0pa)+"\r\n\r\n"
+=>serialsend3 %pas%
+print Info: %pas%
+endif
+if upd[ps]>0
+then
+print Info: PowerSwitch detected
+pss="+ILOPDATA=ICA,PowerSwitch,"+s(0ps)+"\r\n\r\n"
+=>serialsend3 %pss%
+print Info: %pss%
+endif
+if upd[tem]>0
+then
+print Info: Derating-Change detected
+tems="+ILOPDATA=ICA,TEMP_SET,"+s(0tem)+"\r\n\r\n"
+=>serialsend3 %tems%
+print Info: %tems%
+endif
+
+>W
+@Uptime: %s2hms(upsecs)%
+@
+so(1)
+@ck(debug "Enable Debug Mode in Console" 200)
+@ck(mpptdebug "Enable MPPT Re-Trigger Debug in Console" 200)
+@
+@
+ck(enmppt "Enable MPPT Re-Trigger Mode" 200)
+;sl(15 3600 mppt "" "MPPT Time: %0mppt% sec" "")
+nm(15 3600 1 mppt "Re-Trigger Time in sec(15-3600) " 75 0)
+@
+@<b><i>--ACTUAL  SETTINGS (Reading WVC Data need some seconds...)</b></i>
+@Power Adjustment: %0rpa% %%
+@Derating Temperature: %0rtempset% °C
+@Power State: %rpst%
+;@MPPT Time: %0mppt% seconds
+sl(1 100 pa "" "Power Adjustment: %0pa% %%" "") 
+;nm(1 100 1 pa "Power Adjustment in %% " 75 0)
+sl(30 80 tem "" "Derating Temperature: %0tem% °C" "")
+;nm(30 80 1 tem "Derating Temp in °C " 75 0)
+bu(ps "WVC Inverter ON" "WVC Inverter OFF")
+;rb(ps "Inverter" 75 "OFF" "ON")
+@
+@<b><i>--Data from Inverter:</b></i>
+PV Voltage: {m}%1rpvv% V
+PV Current: {m}%2rpva% A
+PV Power: {m}%1rpvp% W
+--
+AC Voltage: {m}%1racv% V
+AC Current: {m}%2racc% A
+AC Power: {m}%1racp% W
+--
+Temperature: {m}%1rtemp% °C
+--
+Energy Total: {m}%2rene% kWh
+Energy Today: {m}%2rdene% KWh
+--
+Planted Trees: {m}%rpla% pcs
+CO² Savings: {m}%remi% t
+--
+Startup Time: {m}%0rtim% sec
+
+
+#datalong
+rpvv=st(data1 , 3)
+rpva=st(data1 , 5)
+rpvp=st(data1 , 7)
+racv=st(data1 , 9)
+racc=st(data1 , 11)
+racp=st(data1 , 13)
+rtemp=st(data1 , 15)
+rpa=st(data1 , 17)
+rene=st(data1 , 19)
+
+#datashort
+rps=st(data2 , 3)
+if debug==1
+then print Debug: ReadPowerState RPS= %rps%
+endif
+if rps==1
+then
+if debug==1
+then print Debug: powerstate is 1
+endif
+rpst="ON"
+endif
+if rps==0
+then
+if debug==1
+then print Debug: powerstate is 0
+endif
+rpst="OFF"
+endif
+if st(data2 , 4)=="Day_Energy"
+then
+if debug==1
+then print Debug: DAYENERGY
+endif
+rdene=st(data2 , 5)
+rpla=st(data2 , 7)
+remi=st(data2 , 9)
+rtim=st(data2 , 11)
+rtempset=st(data2 , 15)
+else
+if debug==1
+then print Debug: NO DAY ENERGY
+endif
+rpla=st(data2 , 5)
+remi=st(data2 , 7)
+rtim=st(data2 , 9)
+rtempset=st(data2 , 13)
+endif
+
+#mppt
+if mpptdebug==1
+ then
+  print MPPT Re-Track: %enmppt%
+endif
+if upsecs%mppt==0
+and enmppt==1
+ then
+  print MPPT Info: Tracker restart every %mppt% seconds!
+  if mpptdebug==1
+   then 
+   print MPPT Debug: actual Power: %0pa%%%%%
+  endif
+ if pa>1
+  then
+  t1pa=pa-1
+  t1pas="+ILOPDATA=ICA,Power_adjustment,"+s(0t1pa)+"\r\n\r\n"
+  if mpptdebug==1
+   then 
+   print MPPT Debug: SET: %0t1pa%%%%%
+  endif
+  =>serialsend3 %t1pas%
+  timer1=mpptwait
+ else
+  print MPPT INFO: Power Adjustment ist 0 or 1%%%%, Calibrate Mode?
+  t1pa=100
+ endif
+endif
+if timer1==0
+ then
+ if t1pa<100
+  then 
+  t2pa=t1pa+1
+  t2pas="+ILOPDATA=ICA,Power_adjustment,"+s(0t2pa)+"\r\n\r\n"
+  if mpptdebug==1
+   then 
+   print MPPT Debug: RESTORE: %0t2pa%%%%%
+  endif
+  =>serialsend3 %t2pas%
+ else
+  if mpptdebug==1
+   then 
+   print MPPT Debug: ERROR - wrong value or calibration mode
+  endif
+ endif
+ timer1=-1
+endif
+
+>J
+,
+"AC ENERGY":{"Total":%rene%,"Today":%rdene%,"Power":%racp%,"Voltage":%racv%,"Current":%racc%},
+"DC ENERGY":{"Voltage":%rpvv%,"Current":%rpva%,"Power":%rpvp%},
+"INVERTER":{"OUTPUT":{"State":"%rpst%","%% max.":%rpa%},"Temperature":%rtemp%},
+"DERATING":{"Temperature":%rtempset%}
