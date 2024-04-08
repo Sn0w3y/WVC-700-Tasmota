@@ -13,7 +13,7 @@ Before you begin, ensure you have the following:
 
 ## 1. Flashing Firmware onto ESP8266
 
-1. **Download Firmware**: Obtain the `tasmota-scriptserial160mhz2MB.bin` from the Tasmota GitHub releases page.
+1. **Download Firmware**: Obtain the `tasmota-scriptserial160mhz2MB.bin` from the releases Tab.
 2. **Prepare Device**: Connect the ESP8266 to your computer using a USB cable or via a Serial-to-USB adapter.
 3. **Flash Firmware**: Open your flashing tool, select the correct COM port, load the downloaded firmware file, and initiate the flashing process. Wait for completion.
 
